@@ -1,4 +1,233 @@
-cept="image/*" style="display:none" onchange="cargarImagen('sistRival', event)">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Plan Pre-Partido</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --rojo: #d2202f;
+    --azul: #233c82;
+    --negro: #19191e;
+    --gris: #6e6e78;
+    --gris-claro: #ebebf0;
+    --gris-muy-claro: #f7f7fa;
+    --blanco: #ffffff;
+    --verde: #1f9d55;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 28px rgba(0,0,0,0.14);
+  }
+  html, body { font-family: 'Poppins', system-ui, sans-serif; background: var(--gris-muy-claro); color: var(--negro); min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+  body { padding-bottom: 100px; }
+  .app-header { background: var(--blanco); box-shadow: var(--shadow); padding: 14px 18px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 12px; }
+  .app-header .escudo-mini { width: 44px; height: 44px; object-fit: contain; }
+  .app-header .titulos { flex: 1; min-width: 0; }
+  .app-header h1 { font-size: 17px; font-weight: 700; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app-header .sub { font-size: 12px; color: var(--gris); font-weight: 500; }
+  .app-header .menu-btn { background: none; border: none; padding: 8px; font-size: 22px; color: var(--negro); cursor: pointer; }
+  .container { max-width: 700px; margin: 0 auto; padding: 18px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 22px; border-radius: 12px; font-family: inherit; font-weight: 600; font-size: 15px; border: none; cursor: pointer; transition: transform 0.1s, box-shadow 0.2s; text-decoration: none; }
+  .btn:active { transform: scale(0.97); }
+  .btn-rojo { background: var(--rojo); color: white; }
+  .btn-azul { background: var(--azul); color: white; }
+  .btn-secundario { background: var(--blanco); color: var(--negro); border: 1.5px solid var(--gris-claro); }
+  .btn-full { width: 100%; }
+  .pantalla { display: none; }
+  .pantalla.activa { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--gris); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .field input, .field textarea { width: 100%; padding: 13px 14px; border-radius: 10px; border: 1.5px solid var(--gris-claro); font-family: inherit; font-size: 15px; background: white; }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--azul); }
+  .field textarea { resize: vertical; min-height: 90px; }
+  .hero { background: linear-gradient(135deg, var(--azul) 0%, #1a2e63 100%); color: white; padding: 26px 22px; border-radius: 18px; margin-bottom: 18px; position: relative; overflow: hidden; }
+  .hero::after { content: ''; position: absolute; right: -40px; bottom: -40px; width: 180px; height: 180px; background: rgba(255,255,255,0.07); border-radius: 50%; }
+  .hero h2 { font-size: 22px; margin-bottom: 6px; }
+  .hero p { opacity: 0.9; font-size: 14px; margin-bottom: 18px; }
+  .hero .btn { background: white; color: var(--azul); }
+  .back-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 4px 0; }
+  .back-btn { background: none; border: none; font-size: 22px; color: var(--negro); cursor: pointer; padding: 4px 8px; }
+  .back-bar h2 { font-size: 18px; font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hoja-card { background: white; border-radius: 14px; padding: 18px; box-shadow: var(--shadow); margin-bottom: 14px; cursor: pointer; border-left: 5px solid var(--rojo); }
+  .hoja-card:nth-child(even) { border-left-color: var(--azul); }
+  .hoja-card .hoja-titulo { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .hoja-card .hoja-info { font-size: 13px; color: var(--gris); }
+  .hoja-card .hoja-estado { font-size: 12px; color: var(--verde); font-weight: 600; margin-top: 6px; }
+  .seccion-titulo { font-size: 13px; font-weight: 700; color: var(--gris); text-transform: uppercase; letter-spacing: 0.8px; margin: 18px 0 10px; padding: 0 4px; }
+  .casillero { background: white; border-radius: 12px; padding: 16px; box-shadow: var(--shadow); margin-bottom: 12px; border-left: 4px solid var(--rojo); }
+  .casillero.azul { border-left-color: var(--azul); }
+  .casillero-label { font-size: 12px; font-weight: 700; color: var(--rojo); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .casillero.azul .casillero-label { color: var(--azul); }
+  .casillero textarea { width: 100%; border: none; resize: vertical; font-family: inherit; font-size: 14px; min-height: 50px; padding: 4px 0; background: transparent; }
+  .casillero textarea:focus { outline: none; }
+  .imagen-preview { margin-top: 10px; position: relative; border-radius: 10px; overflow: hidden; background: var(--gris-muy-claro); }
+  .imagen-preview img { width: 100%; display: block; }
+  .imagen-preview .quitar { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.6); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; font-size: 14px; cursor: pointer; }
+  .btn-imagen { background: var(--gris-muy-claro); border: 1.5px dashed var(--gris-claro); padding: 12px; border-radius: 10px; width: 100%; cursor: pointer; color: var(--gris); font-family: inherit; font-size: 13px; margin-top: 8px; }
+  .btn-imagen:active { transform: scale(0.98); }
+  .checklist-jugadores { max-height: 360px; overflow-y: auto; border: 1.5px solid var(--gris-claro); border-radius: 10px; }
+  .checklist-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--gris-claro); cursor: pointer; }
+  .checklist-item:last-child { border-bottom: none; }
+  .checklist-item .num-camiseta { width: 28px; height: 28px; border-radius: 50%; background: var(--gris-claro); color: var(--gris); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; transition: all 0.2s; }
+  .checklist-item.seleccionado .num-camiseta { background: var(--rojo); color: white; }
+  .checklist-item .nom { flex: 1; font-size: 14px; }
+  .checklist-item .quitar-mini { background: none; border: none; color: var(--gris); font-size: 18px; cursor: pointer; padding: 4px 8px; display: none; }
+  .checklist-item.seleccionado .quitar-mini { display: block; }
+  .agregar-jugador-input { display: flex; gap: 8px; margin-top: 12px; }
+  .agregar-jugador-input input { flex: 1; padding: 10px 12px; border-radius: 8px; border: 1.5px solid var(--gris-claro); font-family: inherit; font-size: 14px; }
+  .agregar-jugador-input button { background: var(--azul); color: white; border: none; padding: 0 16px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+  .categoria-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .categoria-toggle button { background: white; border: 1.5px solid var(--gris-claro); border-radius: 10px; padding: 12px 8px; font-family: inherit; font-size: 13px; cursor: pointer; color: var(--gris); font-weight: 500; }
+  .categoria-toggle button.activa { background: var(--rojo); border-color: var(--rojo); color: white; font-weight: 600; }
+  .menu-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; }
+  .menu-overlay.activo { display: block; }
+  .menu-panel { position: fixed; top: 0; right: 0; height: 100vh; width: 80%; max-width: 320px; background: white; z-index: 1001; padding: 24px 18px; box-shadow: -4px 0 24px rgba(0,0,0,0.18); transform: translateX(100%); transition: transform 0.25s; overflow-y: auto; }
+  .menu-overlay.activo .menu-panel { transform: translateX(0); }
+  .menu-panel h3 { font-size: 15px; color: var(--gris); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 14px; font-weight: 700; }
+  .menu-item { width: 100%; text-align: left; background: none; border: none; padding: 14px 4px; font-family: inherit; font-size: 15px; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--gris-claro); color: var(--negro); }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item .ico { width: 32px; height: 32px; border-radius: 8px; background: var(--gris-muy-claro); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .menu-item.rojo { color: var(--rojo); }
+  .menu-item.rojo .ico { background: #fde4e6; }
+  .menu-info-usuario { background: var(--gris-muy-claro); padding: 12px; border-radius: 10px; margin-bottom: 14px; font-size: 13px; color: var(--gris); word-break: break-all; }
+  .menu-info-usuario strong { color: var(--negro); display: block; margin-bottom: 4px; }
+  .borrador-banner { background: #fff7e0; border: 1.5px solid #f0c040; border-radius: 12px; padding: 14px; margin-bottom: 18px; display: flex; align-items: center; gap: 12px; }
+  .borrador-banner .ico { font-size: 22px; }
+  .borrador-banner .txt { flex: 1; }
+  .borrador-banner .txt strong { display: block; font-size: 14px; margin-bottom: 2px; }
+  .borrador-banner .txt span { font-size: 12px; color: var(--gris); }
+  .borrador-banner button { background: var(--azul); color: white; border: none; padding: 8px 12px; border-radius: 8px; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .login-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 22px; text-align: center; }
+  .login-screen .logo-app { width: 80px; height: 80px; background: linear-gradient(135deg, var(--azul), var(--rojo)); border-radius: 20px; margin-bottom: 24px; display: flex; align-items: center; justify-content: center; color: white; font-size: 38px; font-weight: 700; box-shadow: var(--shadow-lg); }
+  .login-screen h1 { font-size: 26px; margin-bottom: 8px; }
+  .login-screen p { color: var(--gris); margin-bottom: 32px; max-width: 320px; }
+  .btn-google { background: white; color: var(--negro); border: 1.5px solid var(--gris-claro); padding: 14px 28px; border-radius: 12px; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; gap: 12px; cursor: pointer; font-family: inherit; }
+  .btn-google:active { transform: scale(0.97); }
+  .btn-google svg { width: 20px; height: 20px; }
+  .loader { width: 36px; height: 36px; border: 3px solid var(--gris-claro); border-top-color: var(--azul); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--negro); color: white; padding: 12px 20px; border-radius: 99px; font-size: 14px; box-shadow: var(--shadow-lg); opacity: 0; transition: all 0.3s; z-index: 2000; pointer-events: none; }
+  .toast.activo { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .progreso-hoja { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--gris); margin-top: 4px; }
+  .punto-progreso { width: 8px; height: 8px; border-radius: 50%; background: var(--gris-claro); }
+  .punto-progreso.lleno { background: var(--verde); }
+  .resumen-final { background: white; border-radius: 14px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 14px; }
+  .resumen-final h3 { font-size: 16px; margin-bottom: 12px; }
+  .resumen-stat { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--gris-claro); font-size: 14px; }
+  .resumen-stat:last-child { border-bottom: none; }
+  .resumen-stat .valor { font-weight: 600; }
+  .acciones-export { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: flex-end; justify-content: center; }
+  .modal-overlay.activo { display: flex; }
+  .modal-content { background: white; width: 100%; max-width: 700px; border-radius: 18px 18px 0 0; padding: 22px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.25s ease; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-content h3 { font-size: 19px; margin-bottom: 16px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-actions .btn { flex: 1; }
+  .modal-close { position: absolute; top: 14px; right: 14px; background: none; border: none; font-size: 28px; cursor: pointer; color: var(--gris); }
+</style>
+</head>
+<body>
+
+<div class="app-header" id="appHeader" style="display:none;">
+  <img class="escudo-mini" id="escudoMini" alt="Escudo">
+  <div class="titulos">
+    <h1 id="nombreClubHeader">Club</h1>
+    <div class="sub">Plan Pre-Partido</div>
+  </div>
+  <button class="menu-btn" onclick="abrirMenu()">☰</button>
+</div>
+
+<div class="container">
+
+  <div class="pantalla" id="pLogin">
+    <div class="login-screen">
+      <div class="logo-app">📋</div>
+      <h1>Plan Pre-Partido</h1>
+      <p>Iniciá sesión con tu cuenta de Google para acceder a tu configuración en todos tus dispositivos.</p>
+      <button class="btn-google" onclick="loginConGoogle()">
+        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continuar con Google
+      </button>
+    </div>
+  </div>
+
+  <div class="pantalla" id="pCargando">
+    <div class="login-screen">
+      <div class="loader"></div>
+      <p style="margin-top:20px;">Cargando...</p>
+    </div>
+  </div>
+
+  <div class="pantalla" id="pInicio">
+    <div id="bannerBorrador" style="display:none;"></div>
+    <div class="hero">
+      <h2>Armar plan pre-partido</h2>
+      <p>Creá el plan completo en 4 hojas y descargalo como PDF o imágenes para mandar al grupo.</p>
+      <button class="btn" onclick="iniciarNuevoPlan()">+ Empezar plan nuevo</button>
+    </div>
+  </div>
+
+  <div class="pantalla" id="pHojas">
+    <div class="back-bar">
+      <button class="back-btn" onclick="confirmarSalirPlan()">‹</button>
+      <h2>Hojas del plan</h2>
+    </div>
+    <div style="font-size:13px; color:var(--gris); margin-bottom:16px; padding:0 4px;" id="infoPartido">—</div>
+    <div id="listaHojas"></div>
+    <div style="margin-top:20px;">
+      <button class="btn btn-azul btn-full" onclick="irAResumen()">📤 Exportar plan</button>
+    </div>
+  </div>
+
+  <div class="pantalla" id="pHoja1">
+    <div class="back-bar">
+      <button class="back-btn" onclick="volverDeHoja()">‹</button>
+      <h2>Hoja 1 · Citación + Plantel</h2>
+    </div>
+    <div class="seccion-titulo">Citación</div>
+    <div class="casillero">
+      <div class="field"><label>Día y fecha</label><input type="text" id="citDiaFecha" placeholder="Ej: Domingo 1/6"></div>
+      <div class="field"><label>Hora</label><input type="text" id="citHora" placeholder="Ej: 15:30 hs"></div>
+      <div class="field"><label>Lugar</label><input type="text" id="citLugar" placeholder="Ej: Predio José Dellagiovanna"></div>
+      <div class="field"><label>Rival</label><input type="text" id="citRival" placeholder="Ej: CA Platense"></div>
+    </div>
+    <div class="seccion-titulo">Plantel (tocá para asignar camiseta en orden)</div>
+    <div style="font-size:12px; color:var(--gris); margin-bottom:8px; padding:0 4px;">El primero que toques es el 1, el segundo el 2, y así. Tocá la cruz para sacar y reordenar.</div>
+    <div id="checklistPlantel" class="checklist-jugadores"></div>
+    <div class="agregar-jugador-input">
+      <input type="text" id="nuevoJugadorInput" placeholder="Agregar jugador al plantel...">
+      <button onclick="agregarJugadorPlantel()">+</button>
+    </div>
+    <div class="seccion-titulo">Sistema propio</div>
+    <div class="casillero">
+      <div class="casillero-label">Sistema y plan general</div>
+      <textarea id="sistPropTexto" placeholder="Cómo planteamos el partido, salida, ocupación de cancha..."></textarea>
+      <input type="file" id="sistPropImgInput" accept="image/*" style="display:none" onchange="cargarImagen('sistProp', event)">
+      <div id="sistPropImgPreview"></div>
+      <button class="btn-imagen" onclick="document.getElementById('sistPropImgInput').click()">📷 Agregar imagen (opcional)</button>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn btn-secundario" onclick="volverDeHoja()" style="flex:1;">Volver</button>
+      <button class="btn btn-rojo" onclick="guardarHojaYVolver()" style="flex:1;">Guardar hoja</button>
+    </div>
+  </div>
+
+  <div class="pantalla" id="pHoja2">
+    <div class="back-bar">
+      <button class="back-btn" onclick="volverDeHoja()">‹</button>
+      <h2>Hoja 2 · Análisis del rival</h2>
+    </div>
+    <div class="seccion-titulo">Posible sistema rival</div>
+    <div class="casillero azul">
+      <div class="casillero-label">Sistema rival</div>
+      <textarea id="sistRivalTexto" placeholder="Sistema esperado, formación, cómo se paran..."></textarea>
+      <input type="file" id="sistRivalImgInput" accept="image/*" style="display:none" onchange="cargarImagen('sistRival', event)">
       <div id="sistRivalImgPreview"></div>
       <button class="btn-imagen" onclick="document.getElementById('sistRivalImgInput').click()">📷 Agregar imagen (opcional)</button>
     </div>
