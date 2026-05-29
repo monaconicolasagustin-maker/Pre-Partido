@@ -1,0 +1,1152 @@
+cept="image/*" style="display:none" onchange="cargarImagen('sistRival', event)">
+      <div id="sistRivalImgPreview"></div>
+      <button class="btn-imagen" onclick="document.getElementById('sistRivalImgInput').click()">📷 Agregar imagen (opcional)</button>
+    </div>
+    <div class="seccion-titulo">Características del rival</div>
+    <div style="font-size:12px; color:var(--gris); margin-bottom:8px; padding:0 4px;">Elegí solo las que necesites usar (normalmente 2 o 3).</div>
+    <div class="categoria-toggle" id="categoriasRival"></div>
+    <div id="casillerosRival"></div>
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn btn-secundario" onclick="volverDeHoja()" style="flex:1;">Volver</button>
+      <button class="btn btn-rojo" onclick="guardarHojaYVolver()" style="flex:1;">Guardar hoja</button>
+    </div>
+  </div>
+
+  <div class="pantalla" id="pHoja3">
+    <div class="back-bar">
+      <button class="back-btn" onclick="volverDeHoja()">‹</button>
+      <h2>Hoja 3 · Plan de partido</h2>
+    </div>
+    <div class="seccion-titulo">Plan de partido</div>
+    <div style="font-size:12px; color:var(--gris); margin-bottom:8px; padding:0 4px;">Elegí qué categorías querés trabajar para nuestro plan.</div>
+    <div class="categoria-toggle" id="categoriasPlan"></div>
+    <div id="casillerosPlan"></div>
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn btn-secundario" onclick="volverDeHoja()" style="flex:1;">Volver</button>
+      <button class="btn btn-rojo" onclick="guardarHojaYVolver()" style="flex:1;">Guardar hoja</button>
+    </div>
+  </div>
+
+  <div class="pantalla" id="pHoja4">
+    <div class="back-bar">
+      <button class="back-btn" onclick="volverDeHoja()">‹</button>
+      <h2>Hoja 4 · Pelota parada</h2>
+    </div>
+    <div class="seccion-titulo">A favor</div>
+    <div id="ppFavorCasilleros"></div>
+    <div class="seccion-titulo">En contra</div>
+    <div id="ppContraCasilleros"></div>
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn btn-secundario" onclick="volverDeHoja()" style="flex:1;">Volver</button>
+      <button class="btn btn-rojo" onclick="guardarHojaYVolver()" style="flex:1;">Guardar hoja</button>
+    </div>
+  </div>
+
+  <div class="pantalla" id="pResumen">
+    <div class="back-bar">
+      <button class="back-btn" onclick="irA('pHojas')">‹</button>
+      <h2>Exportar plan</h2>
+    </div>
+    <div class="resumen-final">
+      <h3>Resumen del plan</h3>
+      <div id="resumenStats"></div>
+    </div>
+    <div style="font-size:13px; color:var(--gris); margin-bottom:14px; padding:0 4px;">Elegí cómo exportar el plan. Cuando exportes, el plan se descarga y queda en tu dispositivo. Al salir, el plan se descarta.</div>
+    <button class="btn btn-azul btn-full" onclick="exportarPDF()" style="margin-bottom:10px;">📄 Descargar como PDF</button>
+    <button class="btn btn-rojo btn-full" onclick="exportarImagenes()">🖼️ Descargar como imágenes (1 por hoja)</button>
+    <button class="btn btn-secundario btn-full" onclick="confirmarSalirPlan()" style="margin-top:18px;">Salir sin exportar</button>
+  </div>
+
+</div>
+
+<canvas id="canvasHoja" width="1080" height="1528" style="display:none;"></canvas>
+
+<div class="menu-overlay" id="menuOverlay" onclick="cerrarMenu(event)">
+  <div class="menu-panel" onclick="event.stopPropagation()">
+    <h3>Menú</h3>
+    <div class="menu-info-usuario" id="menuInfoUsuario" style="display:none;"></div>
+    <button class="menu-item" onclick="cerrarMenu(); irA('pInicio')"><div class="ico">🏠</div>Inicio</button>
+    <button class="menu-item" onclick="cerrarMenu(); cambiarEscudoClick()"><div class="ico">🛡</div>Cambiar escudo / club</button>
+    <input type="file" id="cambiarEscudoInput" accept="image/*" style="display:none" onchange="aplicarCambioEscudo(event)">
+    <button class="menu-item" onclick="cerrarMenu(); cerrarSesion()"><div class="ico">🚪</div>Cerrar sesión</button>
+    <button class="menu-item rojo" onclick="cerrarMenu(); descartarBorradorMenu()"><div class="ico">🗑</div>Descartar plan actual</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBXeGgOvE0111Zvavh6mwZMzSZZpo3_jfc",
+  authDomain: "informespostpartido.firebaseapp.com",
+  projectId: "informespostpartido",
+  storageBucket: "informespostpartido.firebasestorage.app",
+  messagingSenderId: "334912896528",
+  appId: "1:334912896528:web:aa2bd83d304d068db55495",
+  measurementId: "G-PCL4GL587P"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+window.fb = { auth, db, provider, doc, setDoc, getDoc, signInWithPopup, signOut, onAuthStateChanged };
+</script>
+
+<script>
+// ============================================================
+// ESTADO
+// ============================================================
+let configUsuario = { escudo: null, nombreClub: 'Club Atlético Tigre' };
+let usuarioActual = null;
+let planActual = null; // El plan que se está armando, efímero
+let pantallaAnterior = null;
+let hojaActual = null;
+
+const CATEGORIAS_RIVAL = [
+  'Inicio de juego','Progresión en el campo','Finalización','Presión tras pérdida',
+  'Bloque alto','Bloque medio','Bloque bajo','Transiciones defensivas','Transiciones ofensivas',
+  'Jugadores a tener en cuenta'
+];
+const PELOTA_PARADA = ['Córner','Tiro libre lateral','Tiro libre frontal','Laterales'];
+const STORAGE_KEY = 'plan_pre_partido_borrador';
+
+// ============================================================
+// NAVEGACIÓN
+// ============================================================
+function irA(pantallaId) {
+  document.querySelectorAll('.pantalla').forEach(p => p.classList.remove('activa'));
+  document.getElementById(pantallaId).classList.add('activa');
+  document.getElementById('appHeader').style.display = (pantallaId === 'pLogin' || pantallaId === 'pCargando') ? 'none' : 'flex';
+  window.scrollTo(0, 0);
+}
+
+// ============================================================
+// LOGIN
+// ============================================================
+async function loginConGoogle() {
+  try { await window.fb.signInWithPopup(window.fb.auth, window.fb.provider); }
+  catch (err) {
+    if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+      console.error(err); mostrarToast('Error al iniciar sesión');
+    }
+  }
+}
+
+async function cerrarSesion() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  await window.fb.signOut(window.fb.auth);
+  usuarioActual = null;
+  configUsuario = { escudo: null, nombreClub: 'Club Atlético Tigre' };
+  planActual = null;
+  irA('pLogin');
+}
+
+async function cargarConfigUsuario() {
+  if (!usuarioActual) return;
+  try {
+    // Reusar la config del post-partido si existe
+    const refPost = window.fb.doc(window.fb.db, 'usuarios', usuarioActual.uid);
+    const snapPost = await window.fb.getDoc(refPost);
+    if (snapPost.exists() && snapPost.data().config) {
+      configUsuario = snapPost.data().config;
+    }
+    // Pre-partido tiene su propia config opcional que pisa la anterior
+    const refPre = window.fb.doc(window.fb.db, 'pre_partido', usuarioActual.uid);
+    const snapPre = await window.fb.getDoc(refPre);
+    if (snapPre.exists() && snapPre.data().config) {
+      configUsuario = { ...configUsuario, ...snapPre.data().config };
+    }
+  } catch (err) {
+    console.error('Error cargando config:', err);
+  }
+}
+
+async function guardarConfig() {
+  if (!usuarioActual) return;
+  try {
+    const ref = window.fb.doc(window.fb.db, 'pre_partido', usuarioActual.uid);
+    await window.fb.setDoc(ref, { config: configUsuario, actualizadoEn: new Date().toISOString() });
+  } catch (err) { console.error(err); }
+}
+
+function actualizarHeaderApp() {
+  if (configUsuario.escudo) document.getElementById('escudoMini').src = configUsuario.escudo;
+  document.getElementById('nombreClubHeader').textContent = configUsuario.nombreClub;
+  if (usuarioActual) {
+    const info = document.getElementById('menuInfoUsuario');
+    info.style.display = 'block';
+    info.innerHTML = '<strong>Conectado como</strong>' + (usuarioActual.email || usuarioActual.displayName || '');
+  }
+}
+
+// ============================================================
+// MENU
+// ============================================================
+function abrirMenu() { document.getElementById('menuOverlay').classList.add('activo'); }
+function cerrarMenu(e) {
+  if (e && e.target.closest('.menu-panel') && e.target.tagName !== 'BUTTON') return;
+  document.getElementById('menuOverlay').classList.remove('activo');
+}
+
+function cambiarEscudoClick() { document.getElementById('cambiarEscudoInput').click(); }
+function aplicarCambioEscudo(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  redimensionarImagen(file, 200, ev => {
+    configUsuario.escudo = ev;
+    guardarConfig();
+    actualizarHeaderApp();
+    const nuevo = prompt('Nombre del club:', configUsuario.nombreClub);
+    if (nuevo && nuevo.trim()) { configUsuario.nombreClub = nuevo.trim(); guardarConfig(); actualizarHeaderApp(); }
+    mostrarToast('Actualizado');
+  });
+}
+
+function descartarBorradorMenu() {
+  if (!planActual) { mostrarToast('No hay plan activo'); return; }
+  if (!confirm('¿Descartar el plan actual? Se va a perder todo lo que hayas armado.')) return;
+  planActual = null;
+  borrarBorrador();
+  document.getElementById('bannerBorrador').style.display = 'none';
+  irA('pInicio');
+}
+
+// ============================================================
+// PLAN: ESTRUCTURA Y BORRADOR
+// ============================================================
+function nuevoPlanVacio() {
+  return {
+    inicio: new Date().toISOString(),
+    citacion: { diaFecha: '', hora: '', lugar: '', rival: '' },
+    plantel: { jugadores: [], orden: [] }, // jugadores: [{id,nombre}], orden: [id1,id2,...]
+    sistemaPropio: { texto: '', imagen: null },
+    sistemaRival: { texto: '', imagen: null },
+    caracteristicasRival: {}, // { 'Inicio de juego': {texto,imagen}, ... }
+    planPartido: {},
+    pelotaParadaFavor: {}, // { 'Córner': {texto,imagen}, ... }
+    pelotaParadaContra: {},
+  };
+}
+
+function guardarBorrador() {
+  if (!planActual) return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(planActual));
+  } catch (err) {
+    // Si se llena el storage (imágenes pesadas), avisar
+    console.warn('No se pudo guardar borrador:', err);
+  }
+}
+
+function cargarBorrador() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (err) { return null; }
+}
+
+function borrarBorrador() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (err) {}
+}
+
+function chequearBorrador() {
+  const b = cargarBorrador();
+  const banner = document.getElementById('bannerBorrador');
+  if (!b) { banner.style.display = 'none'; return; }
+  const fechaIni = new Date(b.inicio).toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit'});
+  const rival = b.citacion.rival || 'sin rival';
+  banner.style.display = 'flex';
+  banner.className = 'borrador-banner';
+  banner.innerHTML = '<div class="ico">📝</div><div class="txt"><strong>Tenés un plan a medias</strong><span>' + fechaIni + ' · vs ' + escapeHtml(rival) + '</span></div><button onclick="continuarBorrador()">Continuar</button>';
+}
+
+function continuarBorrador() {
+  const b = cargarBorrador();
+  if (!b) return;
+  planActual = b;
+  irAListaHojas();
+}
+
+function iniciarNuevoPlan() {
+  if (planActual) {
+    if (!confirm('Ya tenés un plan en curso. ¿Descartarlo y empezar uno nuevo?')) return;
+  }
+  planActual = nuevoPlanVacio();
+  guardarBorrador();
+  irAListaHojas();
+}
+
+function confirmarSalirPlan() {
+  if (!confirm('Si salís ahora, el plan queda guardado como borrador. ¿Continuar?')) return;
+  irA('pInicio');
+  chequearBorrador();
+}
+
+// ============================================================
+// PANTALLA: LISTA DE HOJAS
+// ============================================================
+function irAListaHojas() {
+  const info = document.getElementById('infoPartido');
+  const rival = planActual.citacion.rival || 'Sin rival cargado';
+  const fecha = planActual.citacion.diaFecha || 'Sin fecha';
+  info.textContent = fecha + ' · vs ' + rival;
+  renderListaHojas();
+  irA('pHojas');
+}
+
+function hojaCompletada(numHoja) {
+  if (!planActual) return false;
+  if (numHoja === 1) {
+    const c = planActual.citacion;
+    return !!(c.diaFecha || c.hora || c.lugar || c.rival || planActual.plantel.orden.length > 0 || planActual.sistemaPropio.texto || planActual.sistemaPropio.imagen);
+  }
+  if (numHoja === 2) {
+    if (planActual.sistemaRival.texto || planActual.sistemaRival.imagen) return true;
+    return Object.values(planActual.caracteristicasRival).some(v => v && (v.texto || v.imagen));
+  }
+  if (numHoja === 3) {
+    return Object.values(planActual.planPartido).some(v => v && (v.texto || v.imagen));
+  }
+  if (numHoja === 4) {
+    if (Object.values(planActual.pelotaParadaFavor).some(v => v && (v.texto || v.imagen))) return true;
+    return Object.values(planActual.pelotaParadaContra).some(v => v && (v.texto || v.imagen));
+  }
+  return false;
+}
+
+function renderListaHojas() {
+  const cont = document.getElementById('listaHojas');
+  const hojas = [
+    { n: 1, titulo: 'Citación + Plantel', desc: 'Datos del partido, jugadores convocados y sistema propio' },
+    { n: 2, titulo: 'Análisis del rival', desc: 'Sistema del rival y sus características' },
+    { n: 3, titulo: 'Plan de partido', desc: 'Cómo planteamos el partido nosotros' },
+    { n: 4, titulo: 'Pelota parada', desc: 'A favor y en contra' },
+  ];
+  cont.innerHTML = hojas.map(h => {
+    const completada = hojaCompletada(h.n);
+    return '<div class="hoja-card" onclick="abrirHoja(' + h.n + ')"><div class="hoja-titulo">Hoja ' + h.n + ' · ' + h.titulo + '</div><div class="hoja-info">' + h.desc + '</div>' + (completada ? '<div class="hoja-estado">✓ Con contenido</div>' : '') + '</div>';
+  }).join('');
+}
+
+function abrirHoja(n) {
+  hojaActual = n;
+  if (n === 1) renderHoja1();
+  if (n === 2) renderHoja2();
+  if (n === 3) renderHoja3();
+  if (n === 4) renderHoja4();
+  irA('pHoja' + n);
+}
+
+function volverDeHoja() {
+  guardarHojaSinSalir();
+  irAListaHojas();
+}
+
+function guardarHojaYVolver() {
+  guardarHojaSinSalir();
+  guardarBorrador();
+  mostrarToast('Hoja guardada');
+  irAListaHojas();
+}
+
+function guardarHojaSinSalir() {
+  if (hojaActual === 1) guardarHoja1();
+  if (hojaActual === 2) guardarHoja2();
+  if (hojaActual === 3) guardarHoja3();
+  if (hojaActual === 4) guardarHoja4();
+  guardarBorrador();
+}
+
+// ============================================================
+// HOJA 1
+// ============================================================
+function renderHoja1() {
+  document.getElementById('citDiaFecha').value = planActual.citacion.diaFecha || '';
+  document.getElementById('citHora').value = planActual.citacion.hora || '';
+  document.getElementById('citLugar').value = planActual.citacion.lugar || '';
+  document.getElementById('citRival').value = planActual.citacion.rival || '';
+  renderChecklistPlantel();
+  document.getElementById('sistPropTexto').value = planActual.sistemaPropio.texto || '';
+  renderImagenPreview('sistProp', planActual.sistemaPropio.imagen);
+}
+
+function renderChecklistPlantel() {
+  const cont = document.getElementById('checklistPlantel');
+  if (planActual.plantel.jugadores.length === 0) {
+    cont.innerHTML = '<div style="padding:20px; text-align:center; color:var(--gris); font-size:14px;">Agregá jugadores con el botón de abajo.</div>';
+    return;
+  }
+  cont.innerHTML = planActual.plantel.jugadores.map(j => {
+    const idxOrden = planActual.plantel.orden.indexOf(j.id);
+    const seleccionado = idxOrden >= 0;
+    const num = seleccionado ? (idxOrden + 1) : '';
+    return '<label class="checklist-item ' + (seleccionado ? 'seleccionado' : '') + '" onclick="toggleJugadorOrden(\'' + j.id + '\')"><div class="num-camiseta">' + num + '</div><span class="nom">' + escapeHtml(j.nombre) + '</span><button class="quitar-mini" onclick="event.stopPropagation(); quitarJugadorPlantel(\'' + j.id + '\')" title="Borrar del plantel">×</button></label>';
+  }).join('');
+}
+
+function toggleJugadorOrden(id) {
+  const idx = planActual.plantel.orden.indexOf(id);
+  if (idx >= 0) {
+    planActual.plantel.orden.splice(idx, 1);
+  } else {
+    if (planActual.plantel.orden.length >= 18) {
+      mostrarToast('Máximo 18 jugadores convocados');
+      return;
+    }
+    planActual.plantel.orden.push(id);
+  }
+  renderChecklistPlantel();
+  guardarBorrador();
+}
+
+function agregarJugadorPlantel() {
+  const input = document.getElementById('nuevoJugadorInput');
+  const nombre = input.value.trim();
+  if (!nombre) return;
+  planActual.plantel.jugadores.push({ id: 'j_' + Date.now() + '_' + Math.floor(Math.random()*1000), nombre });
+  input.value = '';
+  renderChecklistPlantel();
+  guardarBorrador();
+}
+
+function quitarJugadorPlantel(id) {
+  if (!confirm('¿Quitar este jugador del plantel del plan?')) return;
+  planActual.plantel.jugadores = planActual.plantel.jugadores.filter(j => j.id !== id);
+  planActual.plantel.orden = planActual.plantel.orden.filter(x => x !== id);
+  renderChecklistPlantel();
+  guardarBorrador();
+}
+
+function guardarHoja1() {
+  planActual.citacion.diaFecha = document.getElementById('citDiaFecha').value.trim();
+  planActual.citacion.hora = document.getElementById('citHora').value.trim();
+  planActual.citacion.lugar = document.getElementById('citLugar').value.trim();
+  planActual.citacion.rival = document.getElementById('citRival').value.trim();
+  planActual.sistemaPropio.texto = document.getElementById('sistPropTexto').value.trim();
+}
+
+// ============================================================
+// HOJA 2
+// ============================================================
+function renderHoja2() {
+  document.getElementById('sistRivalTexto').value = planActual.sistemaRival.texto || '';
+  renderImagenPreview('sistRival', planActual.sistemaRival.imagen);
+  renderCategoriasToggle('categoriasRival', CATEGORIAS_RIVAL, planActual.caracteristicasRival, 'casillerosRival');
+  renderCasillerosCategorias('casillerosRival', planActual.caracteristicasRival, 'rival');
+}
+
+function renderCategoriasToggle(contenedorId, categorias, datos, casillerosId) {
+  const cont = document.getElementById(contenedorId);
+  cont.innerHTML = categorias.map(c => {
+    const activa = !!datos[c];
+    return '<button class="' + (activa ? 'activa' : '') + '" onclick="toggleCategoria(\'' + escapeAttr(contenedorId) + '\', \'' + escapeAttr(c) + '\', \'' + escapeAttr(casillerosId) + '\')">' + escapeHtml(c) + '</button>';
+  }).join('');
+}
+
+function toggleCategoria(contenedorId, categoria, casillerosId) {
+  const datos = casillerosId === 'casillerosRival' ? planActual.caracteristicasRival : planActual.planPartido;
+  if (datos[categoria]) {
+    if (datos[categoria].texto || datos[categoria].imagen) {
+      if (!confirm('Esta categoría tiene contenido. ¿Quitarla?')) return;
+    }
+    delete datos[categoria];
+  } else {
+    datos[categoria] = { texto: '', imagen: null };
+  }
+  const cats = casillerosId === 'casillerosRival' ? CATEGORIAS_RIVAL : CATEGORIAS_RIVAL;
+  renderCategoriasToggle(contenedorId, cats, datos, casillerosId);
+  renderCasillerosCategorias(casillerosId, datos, casillerosId === 'casillerosRival' ? 'rival' : 'plan');
+  guardarBorrador();
+}
+
+function renderCasillerosCategorias(contId, datos, prefijo) {
+  const cont = document.getElementById(contId);
+  const claves = Object.keys(datos);
+  if (claves.length === 0) {
+    cont.innerHTML = '<div style="padding:14px; text-align:center; color:var(--gris); font-size:13px;">Tocá una categoría arriba para activarla.</div>';
+    return;
+  }
+  cont.innerHTML = claves.map((c, i) => {
+    const key = prefijo + '_' + slug(c);
+    const colorClass = i % 2 === 0 ? '' : 'azul';
+    const txt = datos[c].texto || '';
+    const imgInputId = 'img_' + key + '_input';
+    const imgPreviewId = 'img_' + key + '_preview';
+    return '<div class="casillero ' + colorClass + '"><div class="casillero-label">' + escapeHtml(c) + '</div><textarea data-cat="' + escapeAttr(c) + '" data-grupo="' + prefijo + '" placeholder="Anotá lo que necesites...">' + escapeHtml(txt) + '</textarea><input type="file" id="' + imgInputId + '" accept="image/*" style="display:none" onchange="cargarImagenCategoria(\'' + prefijo + '\', \'' + escapeAttr(c) + '\', \'' + imgPreviewId + '\', event)"><div id="' + imgPreviewId + '"></div><button class="btn-imagen" onclick="document.getElementById(\'' + imgInputId + '\').click()">📷 Agregar imagen (opcional)</button></div>';
+  }).join('');
+  // Renderizar previews existentes
+  claves.forEach(c => {
+    const key = prefijo + '_' + slug(c);
+    if (datos[c].imagen) {
+      renderImagenPreviewEn('img_' + key + '_preview', datos[c].imagen, () => {
+        datos[c].imagen = null;
+        renderCasillerosCategorias(contId, datos, prefijo);
+        guardarBorrador();
+      });
+    }
+  });
+}
+
+function guardarHoja2() {
+  planActual.sistemaRival.texto = document.getElementById('sistRivalTexto').value.trim();
+  // Recoger textos de cada categoría
+  document.querySelectorAll('#casillerosRival textarea').forEach(ta => {
+    const cat = ta.dataset.cat;
+    if (planActual.caracteristicasRival[cat]) {
+      planActual.caracteristicasRival[cat].texto = ta.value.trim();
+    }
+  });
+}
+
+// ============================================================
+// HOJA 3
+// ============================================================
+function renderHoja3() {
+  renderCategoriasToggle('categoriasPlan', CATEGORIAS_RIVAL, planActual.planPartido, 'casillerosPlan');
+  renderCasillerosCategorias('casillerosPlan', planActual.planPartido, 'plan');
+}
+
+function guardarHoja3() {
+  document.querySelectorAll('#casillerosPlan textarea').forEach(ta => {
+    const cat = ta.dataset.cat;
+    if (planActual.planPartido[cat]) {
+      planActual.planPartido[cat].texto = ta.value.trim();
+    }
+  });
+}
+
+// ============================================================
+// HOJA 4
+// ============================================================
+function renderHoja4() {
+  // Crear casilleros si no existen
+  PELOTA_PARADA.forEach(c => {
+    if (!planActual.pelotaParadaFavor[c]) planActual.pelotaParadaFavor[c] = { texto: '', imagen: null };
+    if (!planActual.pelotaParadaContra[c]) planActual.pelotaParadaContra[c] = { texto: '', imagen: null };
+  });
+  renderCasillerosFijos('ppFavorCasilleros', planActual.pelotaParadaFavor, 'ppf');
+  renderCasillerosFijos('ppContraCasilleros', planActual.pelotaParadaContra, 'ppc');
+}
+
+function renderCasillerosFijos(contId, datos, prefijo) {
+  const cont = document.getElementById(contId);
+  cont.innerHTML = Object.keys(datos).map((c, i) => {
+    const key = prefijo + '_' + slug(c);
+    const colorClass = i % 2 === 0 ? '' : 'azul';
+    const imgInputId = 'img_' + key + '_input';
+    const imgPreviewId = 'img_' + key + '_preview';
+    return '<div class="casillero ' + colorClass + '"><div class="casillero-label">' + escapeHtml(c) + '</div><textarea data-cat="' + escapeAttr(c) + '" data-grupo="' + prefijo + '" placeholder="Movimientos, marcas, responsables...">' + escapeHtml(datos[c].texto || '') + '</textarea><input type="file" id="' + imgInputId + '" accept="image/*" style="display:none" onchange="cargarImagenPP(\'' + prefijo + '\', \'' + escapeAttr(c) + '\', \'' + imgPreviewId + '\', event)"><div id="' + imgPreviewId + '"></div><button class="btn-imagen" onclick="document.getElementById(\'' + imgInputId + '\').click()">📷 Agregar imagen (opcional)</button></div>';
+  }).join('');
+  Object.keys(datos).forEach(c => {
+    const key = prefijo + '_' + slug(c);
+    if (datos[c].imagen) {
+      renderImagenPreviewEn('img_' + key + '_preview', datos[c].imagen, () => {
+        datos[c].imagen = null;
+        renderCasillerosFijos(contId, datos, prefijo);
+        guardarBorrador();
+      });
+    }
+  });
+}
+
+function cargarImagenPP(prefijo, cat, previewId, e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  redimensionarImagen(file, 1200, dataUrl => {
+    const datos = prefijo === 'ppf' ? planActual.pelotaParadaFavor : planActual.pelotaParadaContra;
+    datos[cat].imagen = dataUrl;
+    renderImagenPreviewEn(previewId, dataUrl, () => {
+      datos[cat].imagen = null;
+      renderImagenPreviewEn(previewId, null);
+      guardarBorrador();
+    });
+    guardarBorrador();
+  });
+  e.target.value = '';
+}
+
+function guardarHoja4() {
+  document.querySelectorAll('#ppFavorCasilleros textarea').forEach(ta => {
+    const cat = ta.dataset.cat;
+    if (planActual.pelotaParadaFavor[cat]) planActual.pelotaParadaFavor[cat].texto = ta.value.trim();
+  });
+  document.querySelectorAll('#ppContraCasilleros textarea').forEach(ta => {
+    const cat = ta.dataset.cat;
+    if (planActual.pelotaParadaContra[cat]) planActual.pelotaParadaContra[cat].texto = ta.value.trim();
+  });
+}
+
+// ============================================================
+// IMÁGENES
+// ============================================================
+function cargarImagen(campo, e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  redimensionarImagen(file, 1200, dataUrl => {
+    if (campo === 'sistProp') planActual.sistemaPropio.imagen = dataUrl;
+    if (campo === 'sistRival') planActual.sistemaRival.imagen = dataUrl;
+    renderImagenPreview(campo, dataUrl);
+    guardarBorrador();
+  });
+  e.target.value = '';
+}
+
+function cargarImagenCategoria(prefijo, cat, previewId, e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  redimensionarImagen(file, 1200, dataUrl => {
+    const datos = prefijo === 'rival' ? planActual.caracteristicasRival : planActual.planPartido;
+    if (datos[cat]) {
+      datos[cat].imagen = dataUrl;
+      renderImagenPreviewEn(previewId, dataUrl, () => {
+        datos[cat].imagen = null;
+        renderImagenPreviewEn(previewId, null);
+        guardarBorrador();
+      });
+      guardarBorrador();
+    }
+  });
+  e.target.value = '';
+}
+
+function renderImagenPreview(campo, dataUrl) {
+  const cont = document.getElementById(campo + 'ImgPreview');
+  renderImagenPreviewEn(campo + 'ImgPreview', dataUrl, () => {
+    if (campo === 'sistProp') planActual.sistemaPropio.imagen = null;
+    if (campo === 'sistRival') planActual.sistemaRival.imagen = null;
+    renderImagenPreview(campo, null);
+    guardarBorrador();
+  });
+}
+
+function renderImagenPreviewEn(id, dataUrl, onQuitar) {
+  const cont = document.getElementById(id);
+  if (!cont) return;
+  if (!dataUrl) { cont.innerHTML = ''; return; }
+  cont.innerHTML = '<div class="imagen-preview"><img src="' + dataUrl + '"><button class="quitar" data-id="' + id + '">×</button></div>';
+  cont.querySelector('.quitar').onclick = onQuitar;
+}
+
+function redimensionarImagen(file, maxLado, callback) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxLado || height > maxLado) {
+        if (width > height) { height = Math.round(height * (maxLado / width)); width = maxLado; }
+        else { width = Math.round(width * (maxLado / height)); height = maxLado; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      callback(dataUrl);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ============================================================
+// RESUMEN Y EXPORTACIÓN
+// ============================================================
+function irAResumen() {
+  guardarHojaSinSalir();
+  const stats = [];
+  // Hoja 1
+  const cit = planActual.citacion;
+  const camposCit = ['diaFecha','hora','lugar','rival'].filter(k => cit[k]);
+  stats.push({ label: 'Citación', valor: camposCit.length + ' de 4 datos' });
+  stats.push({ label: 'Plantel', valor: planActual.plantel.orden.length + ' jugadores' });
+  stats.push({ label: 'Sistema propio', valor: (planActual.sistemaPropio.texto || planActual.sistemaPropio.imagen) ? '✓ Cargado' : '— Vacío' });
+  stats.push({ label: 'Sistema rival', valor: (planActual.sistemaRival.texto || planActual.sistemaRival.imagen) ? '✓ Cargado' : '— Vacío' });
+  stats.push({ label: 'Características rival', valor: Object.keys(planActual.caracteristicasRival).length + ' categorías' });
+  stats.push({ label: 'Plan de partido', valor: Object.keys(planActual.planPartido).length + ' categorías' });
+  const ppFavorActivas = Object.values(planActual.pelotaParadaFavor).filter(v => v && (v.texto || v.imagen)).length;
+  const ppContraActivas = Object.values(planActual.pelotaParadaContra).filter(v => v && (v.texto || v.imagen)).length;
+  stats.push({ label: 'Pelota parada a favor', valor: ppFavorActivas + ' categorías' });
+  stats.push({ label: 'Pelota parada en contra', valor: ppContraActivas + ' categorías' });
+  document.getElementById('resumenStats').innerHTML = stats.map(s => '<div class="resumen-stat"><span>' + s.label + '</span><span class="valor">' + s.valor + '</span></div>').join('');
+  irA('pResumen');
+}
+
+// ============================================================
+// GENERACIÓN DE HOJAS COMO IMÁGENES (canvas)
+// ============================================================
+const W_HOJA = 1080, H_HOJA = 1528;
+const C = {
+  ROJO: '#d2202f', AZUL: '#233c82', NEGRO: '#19191e',
+  GRIS: '#6e6e78', GRIS_CLARO: '#ebebf0', GRIS_MUY_CLARO: '#f8f8fa',
+  BLANCO: '#ffffff', VERDE: '#1f9d55'
+};
+const MARGEN = 60;
+
+function preCargarImagen(src) {
+  return new Promise((resolve, reject) => {
+    if (!src) { resolve(null); return; }
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+function dibujarEncabezado(ctx, hojaNum, totalHojas, escudoImg) {
+  ctx.fillStyle = C.BLANCO; ctx.fillRect(0, 0, W_HOJA, H_HOJA);
+  ctx.fillStyle = C.ROJO; ctx.fillRect(0, 0, W_HOJA/2, 10);
+  ctx.fillStyle = C.AZUL; ctx.fillRect(W_HOJA/2, 0, W_HOJA/2, 10);
+  if (escudoImg) {
+    const size = 80;
+    const r = escudoImg.width / escudoImg.height;
+    let w, h;
+    if (r > 1) { w = size; h = size/r; } else { h = size; w = size*r; }
+    ctx.drawImage(escudoImg, MARGEN, 30, w, h);
+  }
+  ctx.fillStyle = C.NEGRO;
+  ctx.font = 'bold 26px Poppins, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(configUsuario.nombreClub.toUpperCase(), MARGEN + 95, 60);
+  ctx.font = '500 14px Poppins, sans-serif';
+  ctx.fillStyle = C.GRIS;
+  ctx.fillText('Plan Pre-Partido', MARGEN + 95, 84);
+  ctx.font = '500 13px Poppins, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('Hoja ' + hojaNum + ' de ' + totalHojas, W_HOJA - MARGEN, 65);
+  ctx.strokeStyle = C.GRIS_CLARO; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(MARGEN, 125); ctx.lineTo(W_HOJA - MARGEN, 125); ctx.stroke();
+  return 145;
+}
+
+function dibujarTituloHoja(ctx, y, titulo) {
+  ctx.font = 'bold 28px Poppins, sans-serif';
+  ctx.textAlign = 'center';
+  const tw = ctx.measureText(titulo).width;
+  const tx = (W_HOJA - tw) / 2;
+  ctx.fillStyle = C.ROJO;
+  ctx.fillRect(tx - 45, y + 18, 30, 6);
+  ctx.fillStyle = C.AZUL;
+  ctx.fillRect(tx + tw + 15, y + 18, 30, 6);
+  ctx.fillStyle = C.NEGRO;
+  ctx.fillText(titulo, W_HOJA/2, y + 24);
+  return y + 60;
+}
+
+function dibujarPie(ctx) {
+  ctx.fillStyle = C.AZUL; ctx.fillRect(0, H_HOJA - 10, W_HOJA/2, 10);
+  ctx.fillStyle = C.ROJO; ctx.fillRect(W_HOJA/2, H_HOJA - 10, W_HOJA/2, 10);
+}
+
+function wrapTextCanvas(ctx, texto, maxWidth) {
+  const palabras = texto.split(/\s+/);
+  const lineas = [];
+  let actual = '';
+  palabras.forEach(p => {
+    const prueba = actual ? actual + ' ' + p : p;
+    if (ctx.measureText(prueba).width <= maxWidth) actual = prueba;
+    else { if (actual) lineas.push(actual); actual = p; }
+  });
+  if (actual) lineas.push(actual);
+  return lineas;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function dibujarCasilleroCanvas(ctx, x, y, w, titulo, texto, imagen, color) {
+  const padX = 20;
+  const tituloH = 50;
+  let textoH = 0;
+  let lineasTexto = [];
+  if (texto) {
+    ctx.font = '400 16px Poppins, sans-serif';
+    lineasTexto = wrapTextCanvas(ctx, texto, w - padX*2);
+    textoH = lineasTexto.length * 24 + 12;
+  }
+  let imagenH = 0;
+  let imgDibujada = null;
+  if (imagen) {
+    imagenH = 360;
+    imgDibujada = imagen;
+  }
+  const altoTotal = tituloH + textoH + imagenH + 18;
+  // Fondo
+  ctx.fillStyle = C.GRIS_MUY_CLARO;
+  roundRect(ctx, x, y, w, altoTotal, 10);
+  ctx.fill();
+  // Barra lateral
+  ctx.fillStyle = color;
+  roundRect(ctx, x, y, 6, altoTotal, 3);
+  ctx.fill();
+  // Título
+  ctx.font = 'bold 15px Poppins, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = color;
+  ctx.fillText(titulo.toUpperCase(), x + padX, y + 28);
+  let yA = y + tituloH;
+  // Texto
+  if (lineasTexto.length > 0) {
+    ctx.font = '400 16px Poppins, sans-serif';
+    ctx.fillStyle = C.NEGRO;
+    lineasTexto.forEach(l => { ctx.fillText(l, x + padX, yA + 18); yA += 24; });
+    yA += 12;
+  }
+  // Imagen (centrada y completa, sin recortar)
+  if (imgDibujada) {
+    const cajaW = w - padX*2;
+    const cajaH = 360;
+    const ratio = Math.min(cajaW / imgDibujada.width, cajaH / imgDibujada.height);
+    const dW = imgDibujada.width * ratio;
+    const dH = imgDibujada.height * ratio;
+    const dX = x + padX + (cajaW - dW) / 2;
+    const dY = yA + (cajaH - dH) / 2;
+    ctx.drawImage(imgDibujada, dX, dY, dW, dH);
+  }
+  return y + altoTotal + 14;
+}
+
+async function generarHoja1(ctx) {
+  const escudoImg = await preCargarImagen(configUsuario.escudo);
+  const sistPropImg = await preCargarImagen(planActual.sistemaPropio.imagen);
+  let y = dibujarEncabezado(ctx, 1, totalHojasActivas(), escudoImg);
+  y = dibujarTituloHoja(ctx, y, 'PLAN DE PARTIDO');
+
+  // Citación
+  const cit = planActual.citacion;
+  const tieneCitacion = cit.diaFecha || cit.hora || cit.lugar || cit.rival;
+  if (tieneCitacion) {
+    const altoCit = 110;
+    ctx.fillStyle = C.GRIS_MUY_CLARO;
+    roundRect(ctx, MARGEN, y, W_HOJA - 2*MARGEN, altoCit, 10);
+    ctx.fill();
+    ctx.fillStyle = C.ROJO;
+    roundRect(ctx, MARGEN, y, 6, altoCit, 3);
+    ctx.fill();
+    ctx.font = 'bold 15px Poppins, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = C.ROJO;
+    ctx.fillText('CITACIÓN', MARGEN + 20, y + 28);
+    const datos = [
+      { lbl: 'DÍA Y FECHA', val: cit.diaFecha },
+      { lbl: 'HORA', val: cit.hora },
+      { lbl: 'LUGAR', val: cit.lugar },
+      { lbl: 'RIVAL', val: cit.rival },
+    ];
+    const colW = (W_HOJA - 2*MARGEN - 30) / 4;
+    datos.forEach((d, i) => {
+      const x = MARGEN + 20 + i*colW;
+      ctx.font = '500 11px Poppins, sans-serif';
+      ctx.fillStyle = C.GRIS;
+      ctx.fillText(d.lbl, x, y + 60);
+      ctx.font = 'bold 16px Poppins, sans-serif';
+      ctx.fillStyle = C.NEGRO;
+      const v = d.val || '—';
+      // recortar si es muy largo
+      let valVis = v;
+      while (ctx.measureText(valVis).width > colW - 10 && valVis.length > 1) {
+        valVis = valVis.slice(0, -1);
+      }
+      if (valVis !== v) valVis = valVis.slice(0, -1) + '…';
+      ctx.fillText(valVis, x, y + 82);
+    });
+    y += altoCit + 15;
+  }
+
+  // Plantel
+  if (planActual.plantel.orden.length > 0) {
+    const filas = Math.ceil(planActual.plantel.orden.length / 3);
+    const altoPlantel = 50 + filas * 36 + 10;
+    ctx.fillStyle = C.GRIS_MUY_CLARO;
+    roundRect(ctx, MARGEN, y, W_HOJA - 2*MARGEN, altoPlantel, 10);
+    ctx.fill();
+    ctx.fillStyle = C.AZUL;
+    roundRect(ctx, MARGEN, y, 6, altoPlantel, 3);
+    ctx.fill();
+    ctx.font = 'bold 15px Poppins, sans-serif';
+    ctx.fillStyle = C.AZUL;
+    ctx.textAlign = 'left';
+    ctx.fillText('PLANTEL CONVOCADO', MARGEN + 20, y + 28);
+    const colW = (W_HOJA - 2*MARGEN - 40) / 3;
+    const itemsPorCol = Math.ceil(planActual.plantel.orden.length / 3);
+    planActual.plantel.orden.forEach((id, i) => {
+      const j = planActual.plantel.jugadores.find(x => x.id === id);
+      if (!j) return;
+      const col = Math.floor(i / itemsPorCol);
+      const row = i % itemsPorCol;
+      const itemX = MARGEN + 20 + col * colW;
+      const itemY = y + 50 + row * 36;
+      const num = i + 1;
+      const r = 14;
+      ctx.fillStyle = num <= 11 ? C.ROJO : C.AZUL;
+      ctx.beginPath();
+      ctx.arc(itemX + r, itemY + r, r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.font = 'bold 13px Poppins, sans-serif';
+      ctx.fillStyle = C.BLANCO;
+      ctx.textAlign = 'center';
+      ctx.fillText(String(num), itemX + r, itemY + r + 4);
+      ctx.font = '500 13px Poppins, sans-serif';
+      ctx.fillStyle = C.NEGRO;
+      ctx.textAlign = 'left';
+      let nombre = j.nombre;
+      while (ctx.measureText(nombre).width > colW - 60 && nombre.length > 1) {
+        nombre = nombre.slice(0, -1);
+      }
+      if (nombre !== j.nombre) nombre = nombre.slice(0, -1) + '…';
+      ctx.fillText(nombre, itemX + r*2 + 8, itemY + r + 4);
+    });
+    y += altoPlantel + 15;
+  }
+
+  // Sistema propio
+  if (planActual.sistemaPropio.texto || sistPropImg) {
+    y = dibujarCasilleroCanvas(ctx, MARGEN, y, W_HOJA - 2*MARGEN, 'Sistema propio', planActual.sistemaPropio.texto || '', sistPropImg, C.ROJO);
+  }
+  dibujarPie(ctx);
+}
+
+async function generarHoja2(ctx) {
+  const escudoImg = await preCargarImagen(configUsuario.escudo);
+  const sistRivalImg = await preCargarImagen(planActual.sistemaRival.imagen);
+  let y = dibujarEncabezado(ctx, posicionDeHoja(2), totalHojasActivas(), escudoImg);
+  y = dibujarTituloHoja(ctx, y, 'ANÁLISIS DEL RIVAL');
+  if (planActual.sistemaRival.texto || sistRivalImg) {
+    y = dibujarCasilleroCanvas(ctx, MARGEN, y, W_HOJA - 2*MARGEN, 'Posible sistema rival', planActual.sistemaRival.texto || '', sistRivalImg, C.AZUL);
+  }
+  const cats = Object.keys(planActual.caracteristicasRival);
+  if (cats.length > 0) {
+    ctx.font = 'bold 16px Poppins, sans-serif';
+    ctx.fillStyle = C.NEGRO;
+    ctx.textAlign = 'left';
+    ctx.fillText('CARACTERÍSTICAS DEL RIVAL', MARGEN, y);
+    ctx.strokeStyle = C.GRIS_CLARO; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(MARGEN, y + 12); ctx.lineTo(W_HOJA - MARGEN, y + 12); ctx.stroke();
+    y += 28;
+    for (let i = 0; i < cats.length; i++) {
+      const c = cats[i];
+      const d = planActual.caracteristicasRival[c];
+      if (!d || (!d.texto && !d.imagen)) continue;
+      const img = await preCargarImagen(d.imagen);
+      const color = i % 2 === 0 ? C.ROJO : C.AZUL;
+      y = dibujarCasilleroCanvas(ctx, MARGEN, y, W_HOJA - 2*MARGEN, c, d.texto || '', img, color);
+      if (y > H_HOJA - 100) break;
+    }
+  }
+  dibujarPie(ctx);
+}
+
+async function generarHoja3(ctx) {
+  const escudoImg = await preCargarImagen(configUsuario.escudo);
+  let y = dibujarEncabezado(ctx, posicionDeHoja(3), totalHojasActivas(), escudoImg);
+  y = dibujarTituloHoja(ctx, y, 'PLAN DE PARTIDO');
+  const cats = Object.keys(planActual.planPartido);
+  for (let i = 0; i < cats.length; i++) {
+    const c = cats[i];
+    const d = planActual.planPartido[c];
+    if (!d || (!d.texto && !d.imagen)) continue;
+    const img = await preCargarImagen(d.imagen);
+    const color = i % 2 === 0 ? C.ROJO : C.AZUL;
+    y = dibujarCasilleroCanvas(ctx, MARGEN, y, W_HOJA - 2*MARGEN, c, d.texto || '', img, color);
+    if (y > H_HOJA - 100) break;
+  }
+  dibujarPie(ctx);
+}
+
+async function generarHoja4(ctx) {
+  const escudoImg = await preCargarImagen(configUsuario.escudo);
+  let y = dibujarEncabezado(ctx, posicionDeHoja(4), totalHojasActivas(), escudoImg);
+  y = dibujarTituloHoja(ctx, y, 'PELOTA PARADA');
+  const favorActivos = Object.entries(planActual.pelotaParadaFavor).filter(([_,v]) => v && (v.texto || v.imagen));
+  const contraActivos = Object.entries(planActual.pelotaParadaContra).filter(([_,v]) => v && (v.texto || v.imagen));
+  if (favorActivos.length > 0) {
+    ctx.font = 'bold 16px Poppins, sans-serif';
+    ctx.fillStyle = C.ROJO;
+    ctx.textAlign = 'left';
+    ctx.fillText('A FAVOR', MARGEN, y);
+    y += 24;
+    for (let i = 0; i < favorActivos.length; i++) {
+      const [c, d] = favorActivos[i];
+      const img = await preCargarImagen(d.imagen);
+      y = dibujarCasilleroCanvas(ctx, MARGEN, y, W_HOJA - 2*MARGEN, c, d.texto || '', img, C.ROJO);
+      if (y > H_HOJA - 200) break;
+    }
+  }
+  if (contraActivos.length > 0 && y < H_HOJA - 200) {
+    ctx.font = 'bold 16px Poppins, sans-serif';
+    ctx.fillStyle = C.AZUL;
+    ctx.textAlign = 'left';
+    ctx.fillText('EN CONTRA', MARGEN, y);
+    y += 24;
+    for (let i = 0; i < contraActivos.length; i++) {
+      const [c, d] = contraActivos[i];
+      const img = await preCargarImagen(d.imagen);
+      y = dibujarCasilleroCanvas(ctx, MARGEN, y, W_HOJA - 2*MARGEN, c, d.texto || '', img, C.AZUL);
+      if (y > H_HOJA - 100) break;
+    }
+  }
+  dibujarPie(ctx);
+}
+
+function totalHojasActivas() {
+  let n = 0;
+  if (hojaCompletada(1)) n++;
+  if (hojaCompletada(2)) n++;
+  if (hojaCompletada(3)) n++;
+  if (hojaCompletada(4)) n++;
+  return Math.max(n, 1);
+}
+
+function posicionDeHoja(num) {
+  let pos = 0;
+  for (let i = 1; i <= num; i++) {
+    if (hojaCompletada(i)) pos++;
+  }
+  return pos;
+}
+
+async function renderizarTodasLasHojas() {
+  const hojas = [];
+  const canvas = document.getElementById('canvasHoja');
+  const ctx = canvas.getContext('2d');
+  if (hojaCompletada(1)) { await generarHoja1(ctx); hojas.push(canvas.toDataURL('image/png')); }
+  if (hojaCompletada(2)) { await generarHoja2(ctx); hojas.push(canvas.toDataURL('image/png')); }
+  if (hojaCompletada(3)) { await generarHoja3(ctx); hojas.push(canvas.toDataURL('image/png')); }
+  if (hojaCompletada(4)) { await generarHoja4(ctx); hojas.push(canvas.toDataURL('image/png')); }
+  return hojas;
+}
+
+async function exportarPDF() {
+  mostrarToast('Generando PDF...');
+  try {
+    const hojas = await renderizarTodasLasHojas();
+    if (hojas.length === 0) { mostrarToast('Cargá contenido en al menos una hoja'); return; }
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW = 210, pageH = 297;
+    hojas.forEach((dataUrl, i) => {
+      if (i > 0) pdf.addPage();
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pageW, pageH);
+    });
+    const rival = (planActual.citacion.rival || 'plan').replace(/[^a-zA-Z0-9_\s]/g, '').replace(/\s+/g, '_');
+    const fecha = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    pdf.save('Plan_' + rival + '_' + fecha + '.pdf');
+    mostrarToast('PDF descargado ✓');
+  } catch (err) {
+    console.error(err);
+    mostrarToast('Error generando PDF');
+  }
+}
+
+async function exportarImagenes() {
+  mostrarToast('Generando imágenes...');
+  try {
+    const hojas = await renderizarTodasLasHojas();
+    if (hojas.length === 0) { mostrarToast('Cargá contenido en al menos una hoja'); return; }
+    const rival = (planActual.citacion.rival || 'plan').replace(/[^a-zA-Z0-9_\s]/g, '').replace(/\s+/g, '_');
+    const fecha = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    for (let i = 0; i < hojas.length; i++) {
+      const a = document.createElement('a');
+      a.href = hojas[i];
+      a.download = 'Plan_' + rival + '_' + fecha + '_hoja' + (i+1) + '.png';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      await new Promise(r => setTimeout(r, 350));
+    }
+    mostrarToast(hojas.length + ' imágenes descargadas ✓');
+  } catch (err) {
+    console.error(err);
+    mostrarToast('Error generando imágenes');
+  }
+}
+
+// ============================================================
+// UTILIDADES
+// ============================================================
+function escapeHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function escapeAttr(s) { if (!s) return ''; return String(s).replace(/[\\"']/g, '\\$&'); }
+function slug(s) { return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); }
+
+let toastTimeout;
+function mostrarToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('activo');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => t.classList.remove('activo'), 2400);
+}
+
+// Auto-guardado de texto al cambiar
+document.addEventListener('input', e => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+    if (planActual) {
+      guardarHojaSinSalir();
+    }
+  }
+});
+
+// ============================================================
+// EXPONER FUNCIONES GLOBALES
+// ============================================================
+window.loginConGoogle = loginConGoogle;
+window.cerrarSesion = cerrarSesion;
+window.abrirMenu = abrirMenu;
+window.cerrarMenu = cerrarMenu;
+window.cambiarEscudoClick = cambiarEscudoClick;
+window.aplicarCambioEscudo = aplicarCambioEscudo;
+window.descartarBorradorMenu = descartarBorradorMenu;
+window.iniciarNuevoPlan = iniciarNuevoPlan;
+window.continuarBorrador = continuarBorrador;
+window.confirmarSalirPlan = confirmarSalirPlan;
+window.abrirHoja = abrirHoja;
+window.volverDeHoja = volverDeHoja;
+window.guardarHojaYVolver = guardarHojaYVolver;
+window.toggleJugadorOrden = toggleJugadorOrden;
+window.agregarJugadorPlantel = agregarJugadorPlantel;
+window.quitarJugadorPlantel = quitarJugadorPlantel;
+window.toggleCategoria = toggleCategoria;
+window.cargarImagen = cargarImagen;
+window.cargarImagenCategoria = cargarImagenCategoria;
+window.cargarImagenPP = cargarImagenPP;
+window.irAResumen = irAResumen;
+window.exportarPDF = exportarPDF;
+window.exportarImagenes = exportarImagenes;
+window.irA = irA;
+
+// ============================================================
+// INICIO
+// ============================================================
+function iniciarApp() {
+  if (!window.fb) { setTimeout(iniciarApp, 100); return; }
+  irA('pCargando');
+  window.fb.onAuthStateChanged(window.fb.auth, async (user) => {
+    if (user) {
+      usuarioActual = user;
+      await cargarConfigUsuario();
+      actualizarHeaderApp();
+      irA('pInicio');
+      chequearBorrador();
+    } else {
+      usuarioActual = null;
+      irA('pLogin');
+    }
+  });
+}
+
+window.addEventListener('DOMContentLoaded', iniciarApp);
+</script>
+
+</body>
+</html>
